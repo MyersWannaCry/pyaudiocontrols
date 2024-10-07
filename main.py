@@ -59,6 +59,16 @@ class MainWindow(QMainWindow):
         # Подключение сигнала для двойного клика по иконке
         self.tray_icon.activated.connect(self.tray_icon_activated)
 
+        # Отрисовка окна в правом нижнем углу экрана
+        screen_geometry = QApplication.primaryScreen().geometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+        window_width = self.frameGeometry().width()
+        window_height = self.frameGeometry().height()
+        x = screen_width - window_width
+        y = screen_height - window_height/0.77
+        self.move(x, y)
+
 
     @Slot()
     def tray_icon_activated(self, reason):
@@ -283,6 +293,7 @@ def load_settings():
         keybind_decrease = "f10"
         decrease_percentage = 20
         save_hotkeys()
+
 
 def main():
     print("START") # debug
