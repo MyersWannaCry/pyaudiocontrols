@@ -1,18 +1,30 @@
-from PySide6.QtCore import (QCoreApplication, QMetaObject, QRect, QSize, Qt)
-from PySide6.QtGui import (QCursor,QFont)
-from PySide6.QtWidgets import (QApplication, QFrame, QLabel, QMainWindow, QPushButton, QSizePolicy, QSlider, QWidget)
+# -*- coding: utf-8 -*-
+
+################################################################################
+## Form generated from reading UI file 'S0_audio_controls1.ui'
+##
+## Created by: Qt User Interface Compiler version 6.8.0
+##
+## WARNING! All changes made in this file will be lost when recompiling UI file!
+################################################################################
+
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QLabel,
+    QMainWindow, QPushButton, QSizePolicy, QSlider,
+    QWidget)
 
 class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
         if not mainWindow.objectName():
             mainWindow.setObjectName(u"mainWindow")
-        mainWindow.resize(275, 240)
-        mainWindow.setMaximumSize(QSize(275, 240))
-        mainWindow.setMinimumSize(QSize(275,240))
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(mainWindow.sizePolicy().hasHeightForWidth())
+        mainWindow.resize(276, 240)
+        mainWindow.setMaximumSize(QSize(276, 16777215))
         font = QFont()
         font.setFamilies([u"Gadugi"])
         font.setPointSize(11)
@@ -29,7 +41,7 @@ class Ui_mainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.percentage_slider = QSlider(self.centralwidget)
         self.percentage_slider.setObjectName(u"percentage_slider")
-        self.percentage_slider.setGeometry(QRect(10, 80, 261, 22))
+        self.percentage_slider.setGeometry(QRect(10, 55, 260, 22))
         self.percentage_slider.setMinimum(1)
         self.percentage_slider.setMaximum(100)
         self.percentage_slider.setValue(60)
@@ -37,7 +49,7 @@ class Ui_mainWindow(object):
         self.percentage_slider.setOrientation(Qt.Orientation.Horizontal)
         self.decrease_intencity = QLabel(self.centralwidget)
         self.decrease_intencity.setObjectName(u"decrease_intencity")
-        self.decrease_intencity.setGeometry(QRect(40, 60, 189, 20))
+        self.decrease_intencity.setGeometry(QRect(43, 36, 189, 20))
         self.decrease_intencity.setFont(font)
         self.Title = QLabel(self.centralwidget)
         self.Title.setObjectName(u"Title")
@@ -58,7 +70,7 @@ class Ui_mainWindow(object):
         self.mute_bind_button.setGeometry(QRect(140, 180, 120, 50))
         self.percentage_label = QLabel(self.centralwidget)
         self.percentage_label.setObjectName(u"percentage_label")
-        self.percentage_label.setGeometry(QRect(130, 100, 22, 16))
+        self.percentage_label.setGeometry(QRect(130, 76, 21, 16))
         self.percentage_label.setFrameShape(QFrame.Shape.NoFrame)
         self.percentage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label = QLabel(self.centralwidget)
@@ -75,6 +87,9 @@ class Ui_mainWindow(object):
         self.label_2.setWordWrap(True)
         self.label_2.setMargin(0)
         self.label_2.setIndent(1)
+        self.percentage_checkbox = QCheckBox(self.centralwidget)
+        self.percentage_checkbox.setObjectName(u"percentage_checkbox")
+        self.percentage_checkbox.setGeometry(QRect(60, 94, 161, 20))
         mainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(mainWindow)
@@ -96,5 +111,6 @@ class Ui_mainWindow(object):
         self.percentage_label.setText(QCoreApplication.translate("mainWindow", u"60%", None))
         self.label.setText(QCoreApplication.translate("mainWindow", u"\u041a\u043b\u0430\u0432\u0438\u0448\u0430 \u043f\u043e\u043d\u0438\u0436\u0435\u043d\u0438\u044f \u0433\u0440\u043e\u043c\u043a\u043e\u0441\u0442\u0438:", None))
         self.label_2.setText(QCoreApplication.translate("mainWindow", u"\u041a\u043b\u0430\u0432\u0438\u0448\u0430 \u043e\u0442\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u0437\u0432\u0443\u043a\u0430:", None))
+        self.percentage_checkbox.setText(QCoreApplication.translate("mainWindow", u"\u0413\u0440\u043e\u043c\u043a\u043e\u0441\u0442\u044c \u0432 \u043f\u0440\u043e\u0446\u0435\u043d\u0442\u0430\u0445", None))
     # retranslateUi
 

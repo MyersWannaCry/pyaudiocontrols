@@ -5,17 +5,18 @@ import psutil
 import keyboard
 import sys
 import PIL.Image
+import ast
 from pycaw.pycaw import AudioUtilities
 from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu
 from PySide6.QtCore import Qt, Slot, QEvent
 import PySide6.QtGui
 from PySide6.QtGui import QIcon
 from S0_audio_controls import Ui_mainWindow
-from pystray import Icon, Menu, MenuItem
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(script_dir, 'config.txt')
 volumedict = {}
+pvolumedict = {}
 muteddict = {}
 image_path = os.path.join(script_dir, 'tray_icon.png')
 icon = PIL.Image.open(image_path)
@@ -30,12 +31,17 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(PySide6.QtGui.QIcon(image_path))
         self.ui.mute_bind_button.setText(keybind_mute)
         self.ui.decrease_bind_button.setText(keybind_decrease)
-        self.ui.percentage_label.setText(f"{decrease_percentage}%")
+        if checkbox_state == True:
+            self.ui.percentage_label.setText(f'{decrease_percentage}%')
+        else:
+            self.ui.percentage_label.setText(str(decrease_percentage))
         self.ui.percentage_slider.setSliderPosition(int(decrease_percentage))
         self.ui.percentage_slider.setValue(int(decrease_percentage))
+        self.ui.percentage_checkbox.setChecked(checkbox_state)
         self.ui.mute_bind_button.clicked.connect(self.change_mute_binding)
         self.ui.decrease_bind_button.clicked.connect(self.change_decrease_binding)
         self.ui.percentage_slider.valueChanged.connect(self.on_slider_changed)
+        self.ui.percentage_checkbox.stateChanged.connect(self.checkbox_checkevent)
         keyboard.add_hotkey(keybind_decrease, decrease_volume_by_percentage)
         keyboard.add_hotkey(keybind_mute, mute_app)
 
@@ -119,7 +125,10 @@ class MainWindow(QMainWindow):
         '''Обработка изменения ползунка и текста под ним'''
         global decrease_percentage
         decrease_percentage = value
-        self.ui.percentage_label.setText(f"{decrease_percentage}%")
+        if checkbox_state == True:
+            self.ui.percentage_label.setText(f'{decrease_percentage}%')
+        else:
+            self.ui.percentage_label.setText(str(decrease_percentage))
         print(decrease_percentage) # debug
         save_hotkeys()
 
@@ -134,6 +143,17 @@ class MainWindow(QMainWindow):
         event.ignore()
         self.hide()
 
+    def checkbox_checkevent(self, state):
+        '''Обработка нажатий переключателя'''
+        global checkbox_state
+        print(self.ui.percentage_checkbox.checkState()) # debug
+        if Qt.CheckState(state) == Qt.CheckState.Checked:
+            checkbox_state = True
+            self.ui.percentage_label.setText(f'{decrease_percentage}%')
+        if Qt.CheckState(state) == Qt.CheckState.Unchecked:
+            checkbox_state = False
+            self.ui.percentage_label.setText(str(decrease_percentage))
+        save_hotkeys()
 
 class AudioController():
     '''Методы аудиоконтроллера, ведущие всё взаимодействие со звуком'''
@@ -205,7 +225,7 @@ def save_hotkeys():
     '''Обработка сохранения данных мута, приглушения и процентажа приглушения в файл'''
     try:
         with open(file_path, "wt") as file:
-            file.write(f"{keybind_mute}\n{keybind_decrease}\n{decrease_percentage}")
+            file.write(f"{keybind_mute}\n{keybind_decrease}\n{decrease_percentage}\n{checkbox_state}")
         file.close()
     except:
         print("Ошибка записи")
@@ -249,17 +269,30 @@ def decrease_volume_by_percentage():
     try:
         process_id = get_current_process()
         audio_controller = AudioController(process_id)
+        temp_percentage = int(decrease_percentage)*audio_controller.process_volume()/100
         if volumedict.get(str(process_id)) == 0:
-            audio_controller.increase_volume(int(decrease_percentage)/100)
+            if checkbox_state == True:
+                audio_controller.increase_volume(pvolumedict.get(str(process_id)))
+            else:
+                audio_controller.increase_volume(int(decrease_percentage)/100)
             add_to_dict(volumedict, process_id, 1)
+            add_to_dict(pvolumedict,process_id, temp_percentage)
         elif volumedict.get(str(process_id)) == 1:
-            audio_controller.decrease_volume(int(decrease_percentage)/100)
+            if checkbox_state == True:
+                audio_controller.decrease_volume(temp_percentage)
+            else:
+                audio_controller.decrease_volume(int(decrease_percentage)/100)
             add_to_dict(volumedict, process_id, 0)
+            add_to_dict(pvolumedict,process_id, temp_percentage)
         else:
-            audio_controller.decrease_volume(int(decrease_percentage)/100)
+            if checkbox_state == True:
+                audio_controller.decrease_volume(temp_percentage)
+            else:
+                audio_controller.decrease_volume(int(decrease_percentage)/100)
             add_to_dict(volumedict, process_id, 0)
-    except:
-        print("Ошибка понижения звука") # debug
+            add_to_dict(pvolumedict,process_id, temp_percentage)
+    except Exception as e:
+        print(f"Ошибка понижения звука: {e}") # debug
         
 def mute_app():
         '''Заглушение звука и запоминание, в муте ли приложение'''
@@ -280,18 +313,20 @@ def mute_app():
 
 def load_settings():
     '''Загрузка настроек из файла'''
-    global keybind_mute, keybind_decrease, decrease_percentage
+    global keybind_mute, keybind_decrease, decrease_percentage, checkbox_state
     try:
         with open(file_path, "r") as file:
             lines = file.readlines()
         keybind_mute = lines[0].strip()
         keybind_decrease = lines[1].strip()
         decrease_percentage = lines[2].strip()
+        checkbox_state = ast.literal_eval(lines[3].strip())
     except:
         print("Проблемы с открытием файла, устанавливаю дефолтные значения") # debug
         keybind_mute = "f11"
         keybind_decrease = "f10"
         decrease_percentage = 20
+        checkbox_state = False
         save_hotkeys()
 
 
