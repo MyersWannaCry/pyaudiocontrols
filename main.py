@@ -69,7 +69,9 @@ translations = {
         "settings": "Настройки",
         "theme": "Тема:",
         "language": "Язык:",
-        "notification": "Приложение свернуто в трей и продолжает работать."
+        "notification": "Приложение свернуто в трей и продолжает работать.",
+        "expand": "Развернуть",
+        "exit": "Выход"
     },
     "English": {
         "intensity": "Mute intensity",
@@ -77,7 +79,9 @@ translations = {
         "settings": "Settings",
         "theme": "Theme:",
         "language": "Language:",
-        "notification": "The application is minimized to the tray and continues to run."
+        "notification": "The application is minimized to the tray and continues to run.",
+        "expand": "Expand",
+        "exit": "Exit"
     },
     "Українська": {
         "intensity": "Інтенсивність приглушення",
@@ -85,7 +89,9 @@ translations = {
         "settings": "Налаштування",
         "theme": "Тема:",
         "language": "Мова:",
-        "notification": "Застосунок згорнуто в трей і продовжує працювати."
+        "notification": "Застосунок згорнуто в трей і продовжує працювати.",
+        "expand": "Розгорнути",
+        "exit": "Вихід"
     },
 }
 themes = { 
@@ -499,12 +505,11 @@ def create_tray_icon(gui):
 
     tray_icon_image = PIL.Image.open(icon_path)
     icon = pystray.Icon("audio_control", tray_icon_image, menu=pystray.Menu(
-        pystray.MenuItem("Развернуть", show_app),
-        pystray.MenuItem("Выход", quit_app)))
+        pystray.MenuItem(translations[language]["expand"], show_app),
+        pystray.MenuItem(translations[language]["exit"], quit_app)))
     icon.run()
 
 def show_notification():
-    # TODO: Добавить перевод
     notification.notify(
         title="S0 AudioControls",
         message=translations[language]["notification"],
