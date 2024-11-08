@@ -1,4 +1,6 @@
 f11
 f10
-50
+60
 True
+English
+Dark Metal

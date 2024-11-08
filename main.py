@@ -1,159 +1,293 @@
 import os
+import sys
 import win32gui
 import win32process
 import psutil
 import keyboard
-import sys
-import PIL.Image
 import ast
+import customtkinter
+from customtkinter import ThemeManager
+import os
+import PIL
+import math
 from pycaw.pycaw import AudioUtilities
-from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu
-from PySide6.QtCore import Qt, Slot, QEvent
-import PySide6.QtGui
-from PySide6.QtGui import QIcon
-from S0_audio_controls import Ui_mainWindow
+import comtypes
+import pystray
+from plyer import notification
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(script_dir, 'config.txt')
 volumedict = {}
 pvolumedict = {}
 muteddict = {}
-image_path = os.path.join(script_dir, 'tray_icon.png')
-icon = PIL.Image.open(image_path)
 on_first_start = True
+tray_icon = None
+settings_toggle = True
+language = None
+theme = None
 
-class MainWindow(QMainWindow):
-    '''Инициализация основного окна с отрисовкой интерфейса и обработкой трея с контекстным меню.'''
+def get_path(file):
+    return os.path.join(script_dir, file)
+
+#Fonts
+font_bold_path = get_path('fonts\\Moderustic-Bold.ttf')
+font_medium_path = get_path('fonts\\Moderustic-Medium.ttf')
+
+#Icons
+icon_path = get_path('images\\icon.ico')
+
+volumedown_icon = PIL.Image.open(get_path('images\\volume-down.png'))
+volumedown_dark_icon = PIL.Image.open(get_path('images\\volume-down-dark.png'))
+
+mute_icon = PIL.Image.open(get_path('images\\volume-mute.png'))
+mute_dark_icon = PIL.Image.open(get_path('images\\volume-mute-dark.png'))
+
+language_icon = PIL.Image.open(get_path('images\\language.png'))
+language_dark_icon = PIL.Image.open(get_path('images\\language_dark.png'))
+
+settings_icon = PIL.Image.open(get_path('images\\settings.png'))
+settings_dark_icon = PIL.Image.open(get_path('images\\settings_dark.png'))
+
+theme_icon = PIL.Image.open(get_path('images\\theme.png'))
+theme_dark_icon = PIL.Image.open(get_path('images\\theme_dark.png'))
+
+back_icon = PIL.Image.open(get_path('images\\back.png'))
+back_dark_icon = PIL.Image.open(get_path('images\\back_dark.png'))
+
+
+volumedown_image = customtkinter.CTkImage(light_image=volumedown_icon, dark_image=volumedown_dark_icon, size=(50,50))
+mute_image = customtkinter.CTkImage(light_image=mute_icon, dark_image=mute_dark_icon, size=(50,50))
+language_image = customtkinter.CTkImage(light_image=language_icon, dark_image=language_dark_icon, size=(25,25))
+settings_image = customtkinter.CTkImage(light_image=settings_icon, dark_image=settings_dark_icon, size=(25,25))
+theme_image = customtkinter.CTkImage(light_image=theme_icon, dark_image=theme_dark_icon, size=(25,25))
+back_image = customtkinter.CTkImage(light_image=back_icon, dark_image=back_dark_icon, size=(25,25))
+
+translations = {
+    "Русский": {
+        "intensity": "Интенсивность приглушения",
+        "percentage": "Громкость в процентах",
+        "settings": "Настройки",
+        "theme": "Тема:",
+        "language": "Язык:",
+        "notification": "Приложение свернуто в трей и продолжает работать."
+    },
+    "English": {
+        "intensity": "Mute intensity",
+        "percentage": "Volume in percents",
+        "settings": "Settings",
+        "theme": "Theme:",
+        "language": "Language:",
+        "notification": "The application is minimized to the tray and continues to run."
+    },
+    "Українська": {
+        "intensity": "Інтенсивність приглушення",
+        "percentage": "Гучність у відсотках",
+        "settings": "Налаштування",
+        "theme": "Тема:",
+        "language": "Мова:",
+        "notification": "Застосунок згорнуто в трей і продовжує працювати."
+    },
+}
+themes = { 
+        "Dark Blue": "dark-blue.json",
+        "Dark Purple" : "dark-purple.json", 
+        "Dark Brown": "dark-brown.json", 
+        "Dark Green": "dark-green.json", 
+        "Coffee": "brown.json", 
+        "White":"white.json",
+        "Dark Red": "red.json",
+        "White Red": "red.json",
+        "Autumn": "autumn.json",
+        "Dark Metal": "metal.json",
+        "Light Metal": "metal.json",
+        "Dark Blue": "midnight.json",
+        "Dark Orange": "orange.json",
+        "Light Orange": "orange.json",
+        "Dark Carrot": "carrot.json",
+        "Light Carrot": "carrot.json",
+        "Dark Cherry": "cherry.json",
+        "Light Cherry": "cherry.json",
+        "Dark Pink": "pink.json",
+        "Light Pink": "pink.json"
+        }
+
+white_themes = ["Coffee", "White Red", "Autumn", "Light Metal", "Light Orange", "Light Carrot", "Light Cherry", "Light Pink"]
+
+class Gui(customtkinter.CTk):
     def __init__(self):
-        super(MainWindow, self).__init__()
-        self.ui = Ui_mainWindow()
-        self.ui.setupUi(self)
-        self.setWindowIcon(PySide6.QtGui.QIcon(image_path))
-        self.ui.mute_bind_button.setText(keybind_mute)
-        self.ui.decrease_bind_button.setText(keybind_decrease)
-        if checkbox_state == True:
-            self.ui.percentage_label.setText(f'{decrease_percentage}%')
-        else:
-            self.ui.percentage_label.setText(str(decrease_percentage))
-        self.ui.percentage_slider.setSliderPosition(int(decrease_percentage))
-        self.ui.percentage_slider.setValue(int(decrease_percentage))
-        self.ui.percentage_checkbox.setChecked(checkbox_state)
-        self.ui.mute_bind_button.clicked.connect(self.change_mute_binding)
-        self.ui.decrease_bind_button.clicked.connect(self.change_decrease_binding)
-        self.ui.percentage_slider.valueChanged.connect(self.on_slider_changed)
-        self.ui.percentage_checkbox.stateChanged.connect(self.checkbox_checkevent)
-        keyboard.add_hotkey(keybind_decrease, decrease_volume_by_percentage)
-        keyboard.add_hotkey(keybind_mute, mute_app)
+        super().__init__()
+        customtkinter.set_appearance_mode("System")
+        customtkinter.set_default_color_theme(get_path(f"themes/{themes[theme]}"))
+        customtkinter.FontManager.load_font(font_bold_path)
+        customtkinter.FontManager.load_font(font_medium_path)
 
-        # Создание иконки в трее
-        self.tray_icon = QSystemTrayIcon(self)
-        self.tray_icon.setIcon(QIcon(image_path))
+        self.iconbitmap(icon_path)
+        self.title("S0 Audio Controls")
+        self.grid_columnconfigure((0,1), weight= 1)
+        self.resizable(False, False)
+        self.protocol("WM_DELETE_WINDOW", lambda: on_closing(self))
+        self.bind("<Unmap>", lambda event: on_closing(self) if self.state() == "iconic" else None)
+        self.settings_window = None
 
-        # Создание контекстного меню для иконки в трее
-        self.tray_menu = QMenu()
-        show_action = self.tray_menu.addAction("Показать")
-        quit_action = self.tray_menu.addAction("Выход")
-
-        # Подключаем действия к соответствующим функциям
-        show_action.triggered.connect(self.show_window)
-        quit_action.triggered.connect(self.exit_application)
-
-        # Устанавливаем меню для иконки трея
-        self.tray_icon.setContextMenu(self.tray_menu)
-        self.tray_icon.show()
-
-        # Подключение сигнала для двойного клика по иконке
-        self.tray_icon.activated.connect(self.tray_icon_activated)
-
-        # Отрисовка окна в правом нижнем углу экрана
-        screen_geometry = QApplication.primaryScreen().geometry()
-        screen_width = screen_geometry.width()
-        screen_height = screen_geometry.height()
-        window_width = self.frameGeometry().width()
-        window_height = self.frameGeometry().height()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        window_width = 300
+        window_height = 290
         x = screen_width - window_width
-        y = screen_height - window_height/0.77
-        self.move(x, y)
+        y = screen_height - window_height/0.78
+        self.geometry(f"{window_width}x{window_height}+{x-7}+{y}")
 
+        self.header = customtkinter.CTkLabel(master = self, text = "S0 AudioControls", font = ("Moderustic Bold",17))
+        self.header.grid(row = 0, column = 0, padx = 5, pady = 5, sticky = "ew", columnspan=2)
 
-    @Slot()
-    def tray_icon_activated(self, reason):
-        '''Показывает интерфейс по нажатию на иконку в трее'''
-        if reason == QSystemTrayIcon.Trigger:
-            self.show_window()
+        self.label1 = customtkinter.CTkLabel(master = self, text = "Интенсивность заглушения", font = ("Moderustic Medium",16))
+        self.label1.grid(row = 1, column = 0, padx = 2, pady = 2, sticky = "ew", columnspan=2)
 
-    @Slot()
-    def show_window(self):
-        '''Показывает интерфейс'''
-        self.showNormal()
-        self.activateWindow()
+        slider_variable = customtkinter.IntVar(value = decrease_percentage)
+        self.slider = customtkinter.CTkSlider(master = self, width=100, height=20, from_=1, to=100, number_of_steps=100, border_width=6, command=self.slider_event, variable= slider_variable)
+        self.slider.grid(row = 2, column = 0, padx = 10, sticky = "ew", columnspan=2)
+        self.label2 = customtkinter.CTkLabel(master = self, text = decrease_percentage, font = ("Moderustic Medium",12))
+        if checkbox_state:
+            self.label2.configure(text = f"{decrease_percentage}%")
+        self.label2.grid(row = 3, column = 0, padx = 0, pady = 0, sticky = "ew", columnspan=2)
 
-    @Slot()
-    def exit_application(self):
-        '''Закрывает приложение, скрывая иконку в трее'''
-        self.tray_icon.hide()
-        QApplication.quit()
+        initial_switch_value = "1" if checkbox_state else "0"
+        self.switch_var = customtkinter.StringVar(value=initial_switch_value)
+        self.switch = customtkinter.CTkSwitch(master = self, text='Громкость в процентах', font = ("Moderustic Medium",14), command=self.switch_event, variable=self.switch_var, onvalue="1", offvalue="0")
+        self.switch.grid(row=4, column = 0, pady = (0,15), columnspan=2)
 
-    def changeEvent(self, event):
-        '''При попытке свернуть окно убирает его в трей, показывая уведомление'''
-        global on_first_start
-        if event.type() == QEvent.WindowStateChange:
-            if on_first_start == True:
-                if self.windowState() & Qt.WindowMinimized:
-                    self.hide()
-                    self.tray_icon.showMessage("Приложение свернуто", "Приложение работает в трее.")
-                    on_first_start = False
-            else:
-                if self.windowState() & Qt.WindowMinimized:
-                    self.hide()
-            super(MainWindow, self).changeEvent(event)
+        self.label3 = customtkinter.CTkLabel(master = self, text = "", image = volumedown_image)
+        self.label3.grid(row = 5, column = 0, padx = (35,0), pady = 5, sticky = "w")
 
+        self.button = customtkinter.CTkButton(master=self, text=keybind_decrease.upper(), width=170, height=50, font = ("Moderustic Bold",17), command=self.button1_event)
+        self.button.grid(row = 5, column = 1, pady = 5, padx = (0,10), sticky = "w")
 
-    def change_mute_binding(self):
-        '''Обработка нажатия на клавишу бинда мута'''
-        rewrite_mute()
-        self.ui.mute_bind_button.setText(keybind_mute)
-        self.ui.decrease_bind_button.setText(keybind_decrease)
+        self.label4 = customtkinter.CTkLabel(master = self, text = "", image = mute_image)
+        self.label4.grid(row = 6, column = 0, padx = (35,0), pady = 2, sticky = "w")
+
+        self.button2 = customtkinter.CTkButton(master=self, text=keybind_mute.upper(), width=170, height=50, font = ("Moderustic Bold",17), command=self.button2_event)
+        self.button2.grid(row = 6, column = 1, pady = 2, padx = (0,10), sticky = "w")
+
+        self.settings_button = customtkinter.CTkButton(master = self, image= settings_image, command = self.toggle_ui_visibility, text = "", height=25, width=25, fg_color="transparent")
+        self.settings_button.grid(row = 0, column = 0 ,pady = 8, padx = 10, sticky = "e",  columnspan=2)
+
+        self.show_ui_button = customtkinter.CTkButton(master = self, image= back_image, command = self.toggle_ui_visibility, text = "", height=25, width=25, fg_color="transparent")
+        self.show_ui_button.grid(row = 0, column = 0 ,pady = 8, padx = 10, sticky = "e",  columnspan=2)
+        self.show_ui_button.grid_remove()
         
-    def change_decrease_binding(self):
-        '''Обработка нажатия на клавишу бинда приглушения'''
-        rewrite_decrease()
-        self.ui.decrease_bind_button.setText(keybind_decrease)
-        self.ui.mute_bind_button.setText(keybind_mute)
-    
-    def on_slider_changed(self,value):
-        '''Обработка изменения ползунка и текста под ним'''
+        self.settings_label = customtkinter.CTkLabel(master = self, text = "Настройки", font = ("Moderustic Bold",17))
+        self.settings_label.grid(row = 0, column = 0, padx = 5, pady = 5, sticky = "ew", columnspan=2)
+        self.settings_label.grid_remove()
+
+        self.settings_label1 = customtkinter.CTkLabel(master = self, text = "Тема:", font = ("Moderustic Bold",14))
+        self.settings_label1.grid(row = 1, column = 0, pady = 35, sticky = "ew")
+        self.settings_label1.grid_remove()
+
+        self.theme_combobox = customtkinter.CTkOptionMenu(master=self, values=["Dark Blue", "Dark Purple", "Dark Brown", 
+                                                                            "Dark Green", "Coffee", "Dark Red", "White Red", 
+                                                                            "Autumn", "Dark Metal", "Light Metal", "Dark Blue", 
+                                                                            "Dark Orange", "Light Orange", "Dark Carrot", "Light Carrot", 
+                                                                            "Dark Cherry", "Light Cherry", "Dark Pink", "Light Pink"], 
+                                                                            command=self.set_theme, font = ("Moderustic Bold",14),
+                                                                            dropdown_font = ("Moderustic Medium",13), anchor = 'center')
+        self.theme_combobox.grid(row = 1, column = 1, pady = 35, padx = 10, sticky = "ew")
+        self.theme_combobox.grid_remove()
+
+        self.settings_label2 = customtkinter.CTkLabel(master = self, text = "Язык:", font = ("Moderustic Bold",14))
+        self.settings_label2.grid(row = 2, column = 0, pady = 45, sticky = "ew")
+        self.settings_label2.grid_remove()
+        
+        self.lang_combobox = customtkinter.CTkOptionMenu(master=self, values=["Русский", "English", "Українська"], command=self.update_language, font = ("Moderustic Bold",14), dropdown_font = ("Moderustic Medium",13), anchor = 'center')
+        self.lang_combobox.grid(row = 2, column = 1, pady = 45, padx = 10, sticky = "ew")
+        self.lang_combobox.grid_remove()
+
+        self.default_widgets = [self.header, self.label1, self.slider, self.label2, self.switch, self.label3, self.button, self.label4, self.button2, self.settings_button]
+        self.settings_widgets = [self.show_ui_button, self.settings_label, self.theme_combobox, self.settings_label1, self.settings_label2, self.lang_combobox]
+
+    def slider_event(self, value):
         global decrease_percentage
-        decrease_percentage = value
-        if checkbox_state == True:
-            self.ui.percentage_label.setText(f'{decrease_percentage}%')
+        slider_data = math.ceil(value)
+        decrease_percentage = slider_data
+        if checkbox_state:
+            self.label2.configure(text = f"{slider_data}%")
         else:
-            self.ui.percentage_label.setText(str(decrease_percentage))
-        print(decrease_percentage) # debug
+            self.label2.configure(text = slider_data)
         save_hotkeys()
 
-    def closeEvent(self, event):
-        '''Игнорирует попытку закрыть приложение нажатием на крестик'''
-        global on_first_start
-        if on_first_start == True:
-            self.tray_icon.showMessage("Приложение свернуто", "Приложение работает в трее.") 
-            on_first_start = False
-        else:
-            pass
-        event.ignore()
-        self.hide()
-
-    def checkbox_checkevent(self, state):
-        '''Обработка нажатий переключателя'''
+    def switch_event(self):
         global checkbox_state
-        print(self.ui.percentage_checkbox.checkState()) # debug
-        if Qt.CheckState(state) == Qt.CheckState.Checked:
+        if self.switch_var.get() == "1":
             checkbox_state = True
-            self.ui.percentage_label.setText(f'{decrease_percentage}%')
-        if Qt.CheckState(state) == Qt.CheckState.Unchecked:
+            self.label2.configure(text = f"{decrease_percentage}%")
+        else:
             checkbox_state = False
-            self.ui.percentage_label.setText(str(decrease_percentage))
+            self.label2.configure(text = decrease_percentage)
         save_hotkeys()
+    
+    def button1_event(self):
+        rewrite_decrease(self)
+        update_buttons(self)
+
+    def button2_event(self):
+        rewrite_mute(self)
+        update_buttons(self)
+
+    def hide_window(self):
+        self.withdraw()
+        create_tray_icon()
+
+    def show_window(self):
+        self.deiconify()
+        if tray_icon:
+            tray_icon.stop()
+
+    def toggle_ui_visibility(self):
+        if self.settings_button.winfo_viewable():
+            for widget in self.default_widgets:
+                widget.grid_remove()
+            for widget in self.settings_widgets:
+                widget.grid()
+            self.show_ui_button.lift()
+        elif self.show_ui_button.winfo_viewable():
+            for widget in self.settings_widgets:
+                widget.grid_remove()
+            for widget in self.default_widgets:
+                widget.grid()
+            self.settings_button.lift()
+
+    def update_language(self, choice):
+        global language
+        language = choice
+        self.label1.configure(text=translations[language]["intensity"])
+        self.switch.configure(text=translations[language]["percentage"])
+        self.settings_label.configure(text=translations[language]["settings"])
+        self.settings_label1.configure(text=translations[language]["theme"])
+        self.settings_label2.configure(text=translations[language]["language"])
+        save_hotkeys()
+
+    def restart(self):
+        self.destroy()
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
+
+    def set_theme(self, choice, restart = True):
+        global theme
+        theme = choice
+        if theme in white_themes:
+            customtkinter.set_appearance_mode("light")
+        else:
+            customtkinter.set_appearance_mode("dark")
+        try:
+            new_theme = get_path(f"themes/{themes[theme]}")
+            customtkinter.set_default_color_theme(new_theme)
+            self.update()
+            save_hotkeys()
+            if restart == True:
+                self.restart()
+        except Exception as E:
+            print (E)
+        
+        
 
 class AudioController():
     '''Методы аудиоконтроллера, ведущие всё взаимодействие со звуком'''
@@ -163,6 +297,7 @@ class AudioController():
 
     def process_volume(self):
         '''Определение процесса и его громкости'''
+        comtypes.CoInitialize()
         sessions = AudioUtilities.GetAllSessions()
         for session in sessions:
             interface = session.SimpleAudioVolume
@@ -172,6 +307,7 @@ class AudioController():
             
     def increase_volume(self, decibels):
         '''Метод повышения громкости приложения в фокусе'''
+        comtypes.CoInitialize()
         sessions = AudioUtilities.GetAllSessions()
         for session in sessions:
             interface = session.SimpleAudioVolume
@@ -182,6 +318,7 @@ class AudioController():
 
     def decrease_volume(self, decibels):
         '''Метод приглушения приложения в фокусе'''
+        comtypes.CoInitialize()
         sessions = AudioUtilities.GetAllSessions()
         for session in sessions:
             interface = session.SimpleAudioVolume
@@ -192,6 +329,7 @@ class AudioController():
 
     def mute(self):
         '''Метод полного заглушения приложения в фокусе'''
+        comtypes.CoInitialize()
         sessions = AudioUtilities.GetAllSessions()
         for session in sessions:
             interface = session.SimpleAudioVolume
@@ -201,12 +339,24 @@ class AudioController():
 
     def unmute(self):
         '''Метод снятия заглушения приложения в фокусе'''
+        comtypes.CoInitialize()
         sessions = AudioUtilities.GetAllSessions()
         for session in sessions:
             interface = session.SimpleAudioVolume
             if session.Process and session.Process.name() == self.process_name:
                 interface.SetMute(0, None)
                 print(self.process_name, "has been unmuted.")  # debug
+
+    def set_volume(self, decibels):
+        sessions = AudioUtilities.GetAllSessions()
+        for session in sessions:
+            interface = session.SimpleAudioVolume
+            if session.Process and session.Process.name() == self.process_name:
+                # only set volume in the range 0.0 to 1.0
+                self.volume = min(1.0, max(0.0, decibels))
+                interface.SetMasterVolume(self.volume, None)
+                print("Volume set to", self.volume)  # debug
+
 
 def get_current_process():
     '''Функция получения процесса на переднем плане'''
@@ -225,40 +375,54 @@ def save_hotkeys():
     '''Обработка сохранения данных мута, приглушения и процентажа приглушения в файл'''
     try:
         with open(file_path, "wt") as file:
-            file.write(f"{keybind_mute}\n{keybind_decrease}\n{decrease_percentage}\n{checkbox_state}")
+            file.write(f"{keybind_mute}\n{keybind_decrease}\n{decrease_percentage}\n{checkbox_state}\n{language}\n{theme}")
         file.close()
     except:
         print("Ошибка записи")
 
-def rewrite_mute():
+def rewrite_mute(gui):
     '''Перезапись горячей клавиши мута'''
     global keybind_mute
     global keybind_decrease
-    keyboard.remove_hotkey(keybind_mute)
+    if keybind_mute in keyboard._hotkeys:
+        keyboard.remove_hotkey(keybind_mute)
     print("Введите клавишу для бинда:") # debug
     keybind_mute = write_hotkey()
     if keybind_mute == keybind_decrease:
-        keybind_decrease = "f10"
+        if keybind_decrease in keyboard._hotkeys:
+            keyboard.remove_hotkey(keybind_decrease)
+            keybind_decrease = "UNMAPPED"
     try:
         keyboard.add_hotkey(keybind_mute, mute_app)
     except Exception as e:
         print(e) #debug TBD: Обработку исключения с неправильно введенной клавишей
     save_hotkeys()
+    update_buttons(gui)
+    print(f"Keybind_decrease: {keybind_decrease}, Keybind_mute: {keybind_mute}") # DEBUG
 
-def rewrite_decrease():
+def rewrite_decrease(gui):
     '''Перезапись горячей клавиши приглушения'''
     global keybind_decrease
     global keybind_mute
-    keyboard.remove_hotkey(keybind_decrease)
+    if keybind_decrease in keyboard._hotkeys:
+        keyboard.remove_hotkey(keybind_decrease)
     print("Введите клавишу для бинда:") # debug
     keybind_decrease = write_hotkey()
     if keybind_decrease == keybind_mute:
-        keybind_mute = "f11"
+        if keybind_mute in keyboard._hotkeys:
+            keyboard.remove_hotkey(keybind_mute)
+            keybind_mute = "UNMAPPED"
     try:
         keyboard.add_hotkey(keybind_decrease, decrease_volume_by_percentage)
     except Exception as e:
         print(e) #debug TBD: Обработку исключения с неправильно введенной клавишей
     save_hotkeys()
+    update_buttons(gui)
+    print(f"Keybind_decrease: {keybind_decrease}, Keybind_mute: {keybind_mute}") # DEBUG
+
+def update_buttons(guiname):
+        guiname.button.configure(text = str(keybind_decrease.upper()))
+        guiname.button2.configure(text = str(keybind_mute.upper()))
 
 def add_to_dict(my_dict, key, value):
     '''Добавление элемента в словарь'''
@@ -269,7 +433,7 @@ def decrease_volume_by_percentage():
     try:
         process_id = get_current_process()
         audio_controller = AudioController(process_id)
-        temp_percentage = int(decrease_percentage)*audio_controller.process_volume()/100
+        temp_percentage = round(float(decrease_percentage)*round(audio_controller.process_volume(),1)/100,1)
         if volumedict.get(str(process_id)) == 0:
             if checkbox_state == True:
                 audio_controller.increase_volume(pvolumedict.get(str(process_id)))
@@ -299,10 +463,10 @@ def mute_app():
         try:
             process_id = get_current_process()
             audio_controller = AudioController(process_id)
-            if muteddict.get(str(process_id)) == 0:
+            if muteddict.get(process_id) == 0:
                 audio_controller.mute()
                 add_to_dict(muteddict, process_id, 1)
-            elif muteddict.get(str(process_id)) == 1:
+            elif muteddict.get(process_id) == 1:
                 audio_controller.unmute()
                 add_to_dict(muteddict, process_id, 0)
             else:
@@ -311,9 +475,47 @@ def mute_app():
         except:
             print("Ошибка мута приложения") # debug
 
+def on_closing(gui):
+    global on_first_start
+    '''Функция сворачивания окна в трей при закрытии'''
+    gui.withdraw()
+    if on_first_start == True:
+            show_notification()
+            on_first_start = False
+    create_tray_icon(gui)
+
+def create_tray_icon(gui):
+    '''Создание трей-меню с функциями развернуть и выйти'''
+    def show_app(icon, item):
+        gui.deiconify()
+        gui.attributes('-topmost', True)
+        gui.attributes('-topmost', False)
+        gui.focus_force()
+        icon.stop()
+
+    def quit_app(icon, item):
+        icon.stop()
+        gui.quit()
+
+    tray_icon_image = PIL.Image.open(icon_path)
+    icon = pystray.Icon("audio_control", tray_icon_image, menu=pystray.Menu(
+        pystray.MenuItem("Развернуть", show_app),
+        pystray.MenuItem("Выход", quit_app)))
+    icon.run()
+
+def show_notification():
+    # TODO: Добавить перевод
+    notification.notify(
+        title="S0 AudioControls",
+        message=translations[language]["notification"],
+        app_icon=icon_path,
+        timeout = 1
+    )
+
+
 def load_settings():
     '''Загрузка настроек из файла'''
-    global keybind_mute, keybind_decrease, decrease_percentage, checkbox_state
+    global keybind_mute, keybind_decrease, decrease_percentage, checkbox_state, language, theme
     try:
         with open(file_path, "r") as file:
             lines = file.readlines()
@@ -321,25 +523,32 @@ def load_settings():
         keybind_decrease = lines[1].strip()
         decrease_percentage = lines[2].strip()
         checkbox_state = ast.literal_eval(lines[3].strip())
-    except:
-        print("Проблемы с открытием файла, устанавливаю дефолтные значения") # debug
+        language = lines[4].strip()
+        theme = lines[5].strip()
+        keyboard.add_hotkey(keybind_decrease, decrease_volume_by_percentage)
+        keyboard.add_hotkey(keybind_mute, mute_app)
+    except Exception as E:
+        print(f"Проблемы с открытием файла, устанавливаю дефолтные значения. Ошибка:\n{E}") # debug
         keybind_mute = "f11"
         keybind_decrease = "f10"
         decrease_percentage = 20
         checkbox_state = False
+        language = "English"
+        theme = "Dark Metal"
         save_hotkeys()
 
 
 def main():
     print("START") # debug
     load_settings()
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
+    gui = Gui()
+    gui.focus_force()
+    gui.update_language(choice=language)
+    gui.lang_combobox.set(language)
+    gui.set_theme(choice = theme, restart = False)
+    gui.theme_combobox.set(theme)
+    gui.mainloop()
 
-
-    sys.exit(app.exec())
- 
 if __name__ == "__main__":
     
     main()
