@@ -1,6 +1,7 @@
 f11
 f10
-60
+50
 True
 English
 Dark Metal
+f12

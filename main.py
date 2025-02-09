@@ -71,7 +71,8 @@ translations = {
         "language": "Язык:",
         "notification": "Приложение свернуто в трей и продолжает работать.",
         "expand": "Развернуть",
-        "exit": "Выход"
+        "exit": "Выход",
+        "restart": "Клавиша\nперезапуска"
     },
     "English": {
         "intensity": "Mute intensity",
@@ -81,7 +82,8 @@ translations = {
         "language": "Language:",
         "notification": "The application is minimized to the tray and continues to run.",
         "expand": "Expand",
-        "exit": "Exit"
+        "exit": "Exit",
+        "restart": "Restart\nhotkey"
     },
     "Українська": {
         "intensity": "Інтенсивність приглушення",
@@ -91,7 +93,8 @@ translations = {
         "language": "Мова:",
         "notification": "Застосунок згорнуто в трей і продовжує працювати.",
         "expand": "Розгорнути",
-        "exit": "Вихід"
+        "exit": "Вихід",
+        "restart": "Клавiша\nперезапуску"
     },
 }
 themes = { 
@@ -200,15 +203,23 @@ class Gui(customtkinter.CTk):
         self.theme_combobox.grid_remove()
 
         self.settings_label2 = customtkinter.CTkLabel(master = self, text = "Язык:", font = ("Moderustic Bold",14))
-        self.settings_label2.grid(row = 2, column = 0, pady = 45, sticky = "ew")
+        self.settings_label2.grid(row = 2, column = 0, pady = 2, sticky = "ew")
         self.settings_label2.grid_remove()
         
         self.lang_combobox = customtkinter.CTkOptionMenu(master=self, values=["Русский", "English", "Українська"], command=self.update_language, font = ("Moderustic Bold",14), dropdown_font = ("Moderustic Medium",13), anchor = 'center')
-        self.lang_combobox.grid(row = 2, column = 1, pady = 45, padx = 10, sticky = "ew")
+        self.lang_combobox.grid(row = 2, column = 1, pady = 2, padx = 10, sticky = "ew")
         self.lang_combobox.grid_remove()
 
+        self.settings_label3 = customtkinter.CTkLabel(master = self, text = "Клавиша\n перезапуска:", font = ("Moderustic Bold",14))
+        self.settings_label3.grid(row = 3, column = 0, pady = 27, sticky = "ew")
+        self.settings_label3.grid_remove()
+
+        self.settings_button1 = customtkinter.CTkButton(master=self, text=keybind_restart.upper(), width=178, height=30, font = ("Moderustic Bold",17), command=self.settings_button1_event)
+        self.settings_button1.grid(row = 3, column = 1, pady = 27, padx  = (0,10), sticky = "e")
+        self.settings_button1.grid_remove()
+
         self.default_widgets = [self.header, self.label1, self.slider, self.label2, self.switch, self.label3, self.button, self.label4, self.button2, self.settings_button]
-        self.settings_widgets = [self.show_ui_button, self.settings_label, self.theme_combobox, self.settings_label1, self.settings_label2, self.lang_combobox]
+        self.settings_widgets = [self.show_ui_button, self.settings_label, self.theme_combobox, self.settings_label1, self.settings_label2, self.lang_combobox, self.settings_label3, self.settings_button1]
 
     def slider_event(self, value):
         global decrease_percentage
@@ -236,6 +247,10 @@ class Gui(customtkinter.CTk):
 
     def button2_event(self):
         rewrite_mute(self)
+        update_buttons(self)
+
+    def settings_button1_event(self):
+        rewrite_restart(self)
         update_buttons(self)
 
     def hide_window(self):
@@ -269,6 +284,7 @@ class Gui(customtkinter.CTk):
         self.settings_label.configure(text=translations[language]["settings"])
         self.settings_label1.configure(text=translations[language]["theme"])
         self.settings_label2.configure(text=translations[language]["language"])
+        self.settings_label3.configure(text=translations[language]["restart"])
         save_hotkeys()
 
     def restart(self):
@@ -381,7 +397,7 @@ def save_hotkeys():
     '''Обработка сохранения данных мута, приглушения и процентажа приглушения в файл'''
     try:
         with open(file_path, "wt") as file:
-            file.write(f"{keybind_mute}\n{keybind_decrease}\n{decrease_percentage}\n{checkbox_state}\n{language}\n{theme}")
+            file.write(f"{keybind_mute}\n{keybind_decrease}\n{decrease_percentage}\n{checkbox_state}\n{language}\n{theme}\n{keybind_restart}")
         file.close()
     except:
         print("Ошибка записи")
@@ -390,6 +406,7 @@ def rewrite_mute(gui):
     '''Перезапись горячей клавиши мута'''
     global keybind_mute
     global keybind_decrease
+    global keybind_restart
     if keybind_mute in keyboard._hotkeys:
         keyboard.remove_hotkey(keybind_mute)
     print("Введите клавишу для бинда:") # debug
@@ -398,18 +415,23 @@ def rewrite_mute(gui):
         if keybind_decrease in keyboard._hotkeys:
             keyboard.remove_hotkey(keybind_decrease)
             keybind_decrease = "UNMAPPED"
+    if keybind_mute == keybind_restart:
+        if keybind_restart in keyboard._hotkeys:
+            keyboard.remove_hotkey(keybind_restart)
+            keybind_restart = "UNMAPPED"
     try:
         keyboard.add_hotkey(keybind_mute, mute_app)
     except Exception as e:
-        print(e) #debug TBD: Обработку исключения с неправильно введенной клавишей
+        print(e) #debug TBD: Обработка исключения с неправильно введенной клавишей
     save_hotkeys()
     update_buttons(gui)
-    print(f"Keybind_decrease: {keybind_decrease}, Keybind_mute: {keybind_mute}") # DEBUG
+    print(f"Keybind_decrease: {keybind_decrease}, Keybind_mute: {keybind_mute}, Keybind_restart: {keybind_restart}") # DEBUG
 
 def rewrite_decrease(gui):
     '''Перезапись горячей клавиши приглушения'''
     global keybind_decrease
     global keybind_mute
+    global keybind_restart
     if keybind_decrease in keyboard._hotkeys:
         keyboard.remove_hotkey(keybind_decrease)
     print("Введите клавишу для бинда:") # debug
@@ -418,17 +440,50 @@ def rewrite_decrease(gui):
         if keybind_mute in keyboard._hotkeys:
             keyboard.remove_hotkey(keybind_mute)
             keybind_mute = "UNMAPPED"
+    if keybind_decrease == keybind_restart:
+        if keybind_restart in keyboard._hotkeys:
+            keyboard.remove_hotkey(keybind_restart)
+            keybind_restart = "UNMAPPED"
     try:
         keyboard.add_hotkey(keybind_decrease, decrease_volume_by_percentage)
     except Exception as e:
         print(e) #debug TBD: Обработку исключения с неправильно введенной клавишей
     save_hotkeys()
     update_buttons(gui)
-    print(f"Keybind_decrease: {keybind_decrease}, Keybind_mute: {keybind_mute}") # DEBUG
+    print(f"Keybind_decrease: {keybind_decrease}, Keybind_mute: {keybind_mute}, Keybind_restart: {keybind_restart}") # DEBUG
+
+def rewrite_restart(gui):
+    global keybind_restart
+    global keybind_mute
+    global keybind_decrease
+    if keybind_restart in keyboard._hotkeys:
+        keyboard.remove_hotkey(keybind_restart)
+    print("Введите клавишу для бинда:") # debug
+    keybind_restart = write_hotkey()
+    if keybind_restart == keybind_decrease:
+        if keybind_decrease in keyboard._hotkeys:
+            keyboard.remove_hotkey(keybind_decrease)
+            keybind_decrease = "UNMAPPED"
+    if keybind_restart == keybind_mute:
+        if keybind_mute in keyboard._hotkeys:
+            keyboard.remove_hotkey(keybind_mute)
+            keybind_mute = "UNMAPPED"
+    try:
+        keyboard.add_hotkey(keybind_restart, restart)
+    except Exception as e:
+        print(e) #debug TBD: Обработка исключения с неправильно введенной клавишей
+    save_hotkeys()
+    update_buttons(gui)
+    print(f"Keybind_decrease: {keybind_decrease}, Keybind_mute: {keybind_mute}, Keybind_restart: {keybind_restart}") # DEBUG
+
+def restart():
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
 
 def update_buttons(guiname):
-        guiname.button.configure(text = str(keybind_decrease.upper()))
-        guiname.button2.configure(text = str(keybind_mute.upper()))
+    guiname.button.configure(text = str(keybind_decrease.upper()))
+    guiname.button2.configure(text = str(keybind_mute.upper()))
+    guiname.settings_button1.configure(text = str(keybind_restart.upper()))
 
 def add_to_dict(my_dict, key, value):
     '''Добавление элемента в словарь'''
@@ -520,7 +575,7 @@ def show_notification():
 
 def load_settings():
     '''Загрузка настроек из файла'''
-    global keybind_mute, keybind_decrease, decrease_percentage, checkbox_state, language, theme
+    global keybind_mute, keybind_decrease, decrease_percentage, checkbox_state, language, theme, keybind_restart
     try:
         with open(file_path, "r") as file:
             lines = file.readlines()
@@ -530,8 +585,10 @@ def load_settings():
         checkbox_state = ast.literal_eval(lines[3].strip())
         language = lines[4].strip()
         theme = lines[5].strip()
+        keybind_restart  = lines[6].strip()
         keyboard.add_hotkey(keybind_decrease, decrease_volume_by_percentage)
         keyboard.add_hotkey(keybind_mute, mute_app)
+        keyboard.add_hotkey(keybind_restart, restart)
     except Exception as E:
         print(f"Проблемы с открытием файла, устанавливаю дефолтные значения. Ошибка:\n{E}") # debug
         keybind_mute = "f11"
@@ -540,6 +597,7 @@ def load_settings():
         checkbox_state = False
         language = "English"
         theme = "Dark Metal"
+        keybind_restart = "f12"
         save_hotkeys()
 
 
@@ -552,6 +610,7 @@ def main():
     gui.lang_combobox.set(language)
     gui.set_theme(choice = theme, restart = False)
     gui.theme_combobox.set(theme)
+    on_closing(gui)
     gui.mainloop()
 
 if __name__ == "__main__":
